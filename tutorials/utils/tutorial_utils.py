@@ -214,7 +214,7 @@ def serialize_scenario(
 
 
 def visualize_scenario(
-    scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_visualization/', bokeh_port: int = 8899
+    scenario: NuPlanScenario, save_dir: str = '~/nuplan/vis/', bokeh_port: int = 8899
 ) -> None:
     """
     Visualize a scenario in Bokeh.
