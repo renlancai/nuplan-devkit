@@ -1,16 +1,19 @@
 from bokeh.io import output_notebook
 from tutorials.utils.tutorial_utils import visualize_nuplan_scenarios, setup_notebook
-import os
+
 
 setup_notebook()
 output_notebook()
 
+import os
+
 NUPALN_DATASET = "/home/tsai/nuplan/dataset/"
 
-NUPLAN_DATA_ROOT = os.getenv('NUPLAN_DATA_ROOT', '/data/sets/nuplan')
+NUPLAN_DATA_ROOT = os.getenv('NUPLAN_DATA_ROOT', NUPALN_DATASET)
 NUPLAN_MAPS_ROOT = os.getenv('NUPLAN_MAPS_ROOT', NUPALN_DATASET + '/maps')
-NUPLAN_DB_FILES = os.getenv('NUPLAN_DB_FILES', NUPALN_DATASET + 'nuplan-v1.1/splits/mini')
+NUPLAN_DB_FILES = os.getenv('NUPLAN_DB_FILES', NUPALN_DATASET + '/nuplan-v1.1/splits/mini')
 NUPLAN_MAP_VERSION = os.getenv('NUPLAN_MAP_VERSION', 'nuplan-maps-v1.0')
+
 
 visualize_nuplan_scenarios(
     data_root=NUPLAN_DATA_ROOT,
