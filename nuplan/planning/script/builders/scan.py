@@ -11,27 +11,32 @@ class ConcurrentGzScanner:
         self.candidate_dirs = set()
         self.lock = threading.Lock()
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.is_shutdown = False
     
     def _scan_subdir(self, subdir):
         for gz_file in Path(subdir).rglob("*.gz"):
             with self.lock:
                 self.candidate_dirs.add((gz_file.parent))
+                if (len(self.candidate_dirs) % 1000 == 0):
+                    print(len(self.candidate_dirs))
+                    # print(f"Found {len(self.candidate_dirs)} candidate directories so far")
+
     
     def _scan_root(self, subdir):
         for gz_file in Path(subdir).glob("*.gz"):
             with self.lock:
                 self.candidate_dirs.add((gz_file.parent))
-    
+                
+
     def scan(self, root_dir):
         # print(f"Scanning directory: {root_dir}")
         root = Path(root_dir)
         subdirs = [str(d) for d in root.iterdir() if d.is_dir()]
         
-        for subdir in subdirs:
-            # print(f"Submitting subdir for scanning: {subdir}")
-            self.executor.submit(self._scan_subdir, subdir)
-        
         self._scan_root(root_dir)
+        
+        for subdir in subdirs:
+            self.executor.submit(self._scan_subdir, subdir)
         
         self.executor.shutdown(wait=True)
         return self.candidate_dirs

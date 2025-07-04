@@ -74,8 +74,6 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     :param feature_names: Set of required feature names to check when loading scenario paths from the cache.
     :return: List of discovered cached scenario paths.
     """
-    
-    logger.info('cache_dir_111 ...')
     cache_dir = Path(cache_path)
     assert cache_dir.exists(), f'Local cache {cache_dir} does not exist!'
     assert any(cache_dir.iterdir()), f'No files found in the local cache {cache_dir}!'
@@ -87,9 +85,12 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     #     if not (feature_names - {feature_name.stem for feature_name in path.iterdir()})
     # ]
     
+    num_workers = 512
+    
+    logger.info('cache_dir_111 ...')
     start = time.time()
     candidate_scenario_dirs = set()
-    candidate_scenario_dirs = ConcurrentGzScanner(max_workers=64).scan(cache_dir)
+    candidate_scenario_dirs = ConcurrentGzScanner(max_workers=num_workers).scan(cache_dir)
     # for gz_file in cache_dir.rglob("*.gz"): # single thred
     #     candidate_scenario_dirs.add(gz_file.parent)
     #     if len(candidate_scenario_dirs) > 10000:
@@ -119,10 +120,9 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     
     start = time.time()
     scenario_cache_paths = ConcurrentFeatureMatcher(
-        feature_names, max_workers=64).batch_match(candidate_scenario_dirs)
-    
+        feature_names, max_workers=num_workers).batch_match(candidate_scenario_dirs)
     end = time.time()
-    print(f"cache_dir_333 cost: {start - end:.4f} seconds")
+    print(f"cache_dir_333 cost: {end - start:.4f} seconds")
     logger.info('cache_dir_333 ...')
 
     return scenario_cache_paths
