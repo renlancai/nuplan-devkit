@@ -85,7 +85,7 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     #     if not (feature_names - {feature_name.stem for feature_name in path.iterdir()})
     # ]
     
-    num_workers = 512
+    num_workers = 128
     
     logger.info('cache_dir_111 ...')
     start = time.time()
@@ -236,6 +236,7 @@ def create_scenario_from_paths(paths: List[Path]) -> List[AbstractScenario]:
     :param paths: List of paths to load scenarios from.
     :return: List of created scenarios.
     """
+    # start = time.time()
     scenarios = [
         CachedScenario(
             log_name=path.parent.parent.name,
@@ -244,5 +245,8 @@ def create_scenario_from_paths(paths: List[Path]) -> List[AbstractScenario]:
         )
         for path in paths
     ]
+    
+    # end = time.time()
+    # print(f"cache_dir_555 cost: {end - start:.4f} seconds")
 
     return scenarios

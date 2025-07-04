@@ -18,9 +18,8 @@ class ConcurrentGzScanner:
             with self.lock:
                 self.candidate_dirs.add((gz_file.parent))
                 if (len(self.candidate_dirs) % 1000 == 0):
+                    pass
                     print(len(self.candidate_dirs))
-                    # print(f"Found {len(self.candidate_dirs)} candidate directories so far")
-
     
     def _scan_root(self, subdir):
         for gz_file in Path(subdir).glob("*.gz"):
@@ -34,10 +33,17 @@ class ConcurrentGzScanner:
         subdirs = [str(d) for d in root.iterdir() if d.is_dir()]
         
         self._scan_root(root_dir)
+        print(len(subdirs))
         
+        # i = 0
+        # for subdir in subdirs:
+        #     if (i % 20 == 0):
+        #         self.executor.submit(self._scan_subdir, subdir)
+        #     i += 1
+            
         for subdir in subdirs:
             self.executor.submit(self._scan_subdir, subdir)
-        
+    
         self.executor.shutdown(wait=True)
         return self.candidate_dirs
 
@@ -75,3 +81,4 @@ class ConcurrentFeatureMatcher:
         
         self.executor.shutdown(wait=True)
         return self.scenario_cache_paths
+
