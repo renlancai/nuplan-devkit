@@ -1,4 +1,5 @@
 import logging
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, cast
@@ -16,6 +17,8 @@ from nuplan.planning.training.experiments.cache_metadata_entry import (
 )
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
+
+from nuplan.planning.script.builders.scan import ConcurrentGzScanner, ConcurrentFeatureMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -71,18 +74,56 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     :param feature_names: Set of required feature names to check when loading scenario paths from the cache.
     :return: List of discovered cached scenario paths.
     """
+    
+    logger.info('cache_dir_111 ...')
     cache_dir = Path(cache_path)
     assert cache_dir.exists(), f'Local cache {cache_dir} does not exist!'
     assert any(cache_dir.iterdir()), f'No files found in the local cache {cache_dir}!'
 
-    candidate_scenario_dirs = {x.parent for x in cache_dir.rglob("*.gz")}
-
-    # Keep only dir paths that contains all required feature names
-    scenario_cache_paths = [
-        path
-        for path in candidate_scenario_dirs
-        if not (feature_names - {feature_name.stem for feature_name in path.iterdir()})
-    ]
+    # candidate_scenario_dirs = {x.parent for x in cache_dir.rglob("*.gz")}
+    # scenario_cache_paths = [
+    #     path
+    #     for path in candidate_scenario_dirs
+    #     if not (feature_names - {feature_name.stem for feature_name in path.iterdir()})
+    # ]
+    
+    start = time.time()
+    candidate_scenario_dirs = set()
+    candidate_scenario_dirs = ConcurrentGzScanner(max_workers=64).scan(cache_dir)
+    # for gz_file in cache_dir.rglob("*.gz"): # single thred
+    #     candidate_scenario_dirs.add(gz_file.parent)
+    #     if len(candidate_scenario_dirs) > 10000:
+    #         logger.warning(f"Too many candidate scenario dirs: {len(candidate_scenario_dirs)}")
+    #         break
+    end = time.time()
+    print(f"cache_dir_222 cost: {end - start:.4f} seconds")
+    print(f"candidate_scenario_dirs: {len(candidate_scenario_dirs)}")
+    
+    # # single thred
+    # scenario_cache_paths = []
+    # for path in candidate_scenario_dirs:
+    #     path_obj = Path(path)
+    #     if not path_obj.exists():
+    #         print(f"warning: path dose not exists: {path}")
+    #         continue
+    #     try:
+    #         existing_features = {f.stem for f in path_obj.iterdir()}
+    #         if not (feature_names - existing_features):
+    #             scenario_cache_paths.append(path)
+    #     except PermissionError:
+    #         print(f"no access: {path}")
+    #         continue
+    #     except Exception as e:
+    #         print(f"process {path} wrong: {str(e)}")
+    #         continue
+    
+    start = time.time()
+    scenario_cache_paths = ConcurrentFeatureMatcher(
+        feature_names, max_workers=64).batch_match(candidate_scenario_dirs)
+    
+    end = time.time()
+    print(f"cache_dir_333 cost: {start - end:.4f} seconds")
+    logger.info('cache_dir_333 ...')
 
     return scenario_cache_paths
 
@@ -97,6 +138,7 @@ def extract_scenarios_from_cache(
     :param model: NN model used for training.
     :return: List of extracted scenarios.
     """
+    logger.info('Extracting scenarios from cache...')
     cache_path = str(cfg.cache.cache_path)
 
     # Find all required feature/target names to load from cache
@@ -104,6 +146,7 @@ def extract_scenarios_from_cache(
     target_builders = model.get_list_of_computed_target()
     feature_names = {builder.get_feature_unique_name() for builder in feature_builders + target_builders}
 
+    logger.info('get_local_scenario_cache...')
     # Get cached scenario paths locally or remotely
     scenario_cache_paths = (
         get_s3_scenario_cache(cache_path, feature_names, worker)
@@ -162,6 +205,7 @@ def build_scenarios(cfg: DictConfig, worker: WorkerPool, model: TorchModuleWrapp
     :param model: NN model used for training.
     :return: List of extracted scenarios.
     """
+    print(cfg.cache.use_cache_without_dataset)
     scenarios = (
         extract_scenarios_from_cache(cfg, worker, model)
         if cfg.cache.use_cache_without_dataset
